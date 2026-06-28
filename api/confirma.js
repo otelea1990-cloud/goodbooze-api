@@ -22,6 +22,8 @@ module.exports = async function handler(req, res) {
 
   try {
     const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+    credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+
     const auth = new google.auth.GoogleAuth({
       credentials: credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
