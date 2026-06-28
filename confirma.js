@@ -6,29 +6,32 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.status(200).end();
+    return;
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ status: 'error', mesaj: 'Metodă nepermisă' });
+    res.status(405).json({ status: 'error', mesaj: 'Metoda nepermisa' });
+    return;
   }
 
   const { nume, telefon, insotit, numeInsotit, cod } = req.body;
 
   if (!nume || !telefon || !cod) {
-    return res.status(400).json({ status: 'error', mesaj: 'Câmpuri lipsă' });
+    res.status(400).json({ status: 'error', mesaj: 'Campuri lipsa' });
+    return;
   }
 
   try {
+    const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
     const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
+      credentials: credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
     const sheets = google.sheets({ version: 'v4', auth });
     const SHEET_ID = '19_5VYM0Mn7XeMJbpmJNKYa4cf255ltFmrVdFVbTp4N0';
 
-    // Citește codurile
     const codResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
       range: 'Coduri!A:D',
@@ -36,25 +39,26 @@ export default async function handler(req, res) {
 
     const rows = codResponse.data.values || [];
     const codTrimis = cod.toUpperCase().trim();
-    let rowIndex = -1;
     let codGasit = false;
+    let rowIndex = -1;
 
     for (let i = 1; i < rows.length; i++) {
       if (rows[i][1] && rows[i][1].toUpperCase().trim() === codTrimis) {
         codGasit = true;
         rowIndex = i + 1;
         if (rows[i][3] && rows[i][3].toLowerCase() === 'folosit') {
-          return res.status(200).json({ status: 'used', mesaj: 'Acest cod a fost deja folosit.' });
+          res.status(200).json({ status: 'used', mesaj: 'Acest cod a fost deja folosit.' });
+          return;
         }
         break;
       }
     }
 
     if (!codGasit) {
-      return res.status(200).json({ status: 'invalid', mesaj: 'Cod de invitație invalid.' });
+      res.status(200).json({ status: 'invalid', mesaj: 'Cod de invitatie invalid.' });
+      return;
     }
 
-    // Marchează codul ca folosit
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: `Coduri!D${rowIndex}`,
@@ -62,7 +66,6 @@ export default async function handler(req, res) {
       requestBody: { values: [['Folosit']] },
     });
 
-    // Înregistrează înscrierea
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
       range: 'Invitati petrecere!A:F',
@@ -72,10 +75,10 @@ export default async function handler(req, res) {
       },
     });
 
-    return res.status(200).json({ status: 'success', mesaj: 'Confirmare înregistrată.' });
+    res.status(200).json({ status: 'success', mesaj: 'Confirmare inregistrata.' });
 
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ status: 'error', mesaj: 'Eroare server. Încearcă din nou.' });
+    res.status(500).json({ status: 'error', mesaj: 'Eroare server. Incearca din nou.' });
   }
 }
