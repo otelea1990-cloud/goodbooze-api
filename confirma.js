@@ -1,25 +1,14 @@
 const { google } = require('googleapis');
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.status(405).json({ status: 'error', mesaj: 'Metoda nepermisa' });
-    return;
+    return res.status(405).json({ status: 'error', mesaj: 'Metoda nepermisa' });
   }
 
   const { nume, telefon, insotit, numeInsotit, cod } = req.body;
 
   if (!nume || !telefon || !cod) {
-    res.status(400).json({ status: 'error', mesaj: 'Campuri lipsa' });
-    return;
+    return res.status(400).json({ status: 'error', mesaj: 'Campuri lipsa' });
   }
 
   try {
@@ -47,16 +36,14 @@ export default async function handler(req, res) {
         codGasit = true;
         rowIndex = i + 1;
         if (rows[i][3] && rows[i][3].toLowerCase() === 'folosit') {
-          res.status(200).json({ status: 'used', mesaj: 'Acest cod a fost deja folosit.' });
-          return;
+          return res.status(200).json({ status: 'used', mesaj: 'Acest cod a fost deja folosit.' });
         }
         break;
       }
     }
 
     if (!codGasit) {
-      res.status(200).json({ status: 'invalid', mesaj: 'Cod de invitatie invalid.' });
-      return;
+      return res.status(200).json({ status: 'invalid', mesaj: 'Cod de invitatie invalid.' });
     }
 
     await sheets.spreadsheets.values.update({
@@ -75,10 +62,10 @@ export default async function handler(req, res) {
       },
     });
 
-    res.status(200).json({ status: 'success', mesaj: 'Confirmare inregistrata.' });
+    return res.status(200).json({ status: 'success', mesaj: 'Confirmare inregistrata.' });
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', mesaj: 'Eroare server. Incearca din nou.' });
+    return res.status(500).json({ status: 'error', mesaj: 'Eroare server.' });
   }
 }
